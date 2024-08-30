@@ -52,13 +52,13 @@ with open(os.path.join(DATA_DIR, f"rg2_baseline_{mw}_new.pickle"), "rb") as hand
     rg2_std_theo = pickle.load(handle)[:, 0]
 ```
 
-## File Structure
+## File Structures
 
 To reproduce the figures and tables, refer to the **notebook** folder:
 - **figure_data.ipynb**: Visualizes polymer architecture and chemical patterns used in the study.
 - **figure_result.ipynb**: Visualizes all result figures from the paper.
 
-The core code is located in the **gcgnn** folder:
+The core codes are located in the **gcgnn** folder:
 
 - **train.py**: Handles the training of GC, GNN, and GC-GNN models, including setup and execution.
 - **model_utils.py**: Provides utility functions to support model training processes.
