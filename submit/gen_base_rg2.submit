@@ -1,0 +1,24 @@
+#!/bin/bash
+#SBATCH --job-name=base          # create a short name for your job
+#SBATCH --error=../log/base.err  # stderr file
+#SBATCH --output=../log/base.out # stderr file
+#SBATCH --ntasks=5               # total number of tasks across all nodes
+#SBATCH --cpus-per-task=1        # cpu-cores per task (>1 if multi-threaded tasks)
+#SBATCH --mem-per-cpu=8G         # memory per cpu-core (4G is default)
+#SBATCH --time=01:00:00          # total run time limit (HH:MM:SS)
+
+echo "My SLURM_ARRAY_JOB_ID is $SLURM_ARRAY_JOB_ID."
+echo "My SLURM_ARRAY_TASK_ID is $SLURM_ARRAY_TASK_ID"
+echo "Executing on the machine:" $(hostname)
+
+module purge
+module load anaconda3/2023.3
+conda activate py38torch113
+
+FUNC="/home/sj0161/delta_learning/delta_learning/gen_base_rg2.py"
+
+srun --ntasks=1 python3 -u FUNC --start 40  &
+srun --ntasks=1 python3 -u FUNC --start 90  &
+srun --ntasks=1 python3 -u FUNC --start 190 &
+
+wait
