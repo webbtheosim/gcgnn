@@ -21,7 +21,7 @@ $ pip install -e .
 Select a disk location for data storage and update the directory paths before running the program. Download the required data from Zenodo [here](https://doi.org/10.5281/zenodo.13619700).
 - **DATA_DIR**: Stores data pickle files (approx. 210 MB).
 
-Additional training weights and results can be downloaded  [here](https://drive.google.com/drive/folders/14REH3x3MEzpC0st77jwlDL4Rw-N1Vvfq?usp=drive_link)
+Additional training weights and results can be downloaded [here](https://drive.google.com/drive/folders/14REH3x3MEzpC0st77jwlDL4Rw-N1Vvfq?usp=drive_link).
 - **TRAIN_RESULT_DIR** or **HIST_DIR** (optional): Stores training results in pickle format (approx. 2.5 GB).
 - **MODEL_DIR** (optional): Stores training weights in .h5 format (approx. 1.3 GB).
 
