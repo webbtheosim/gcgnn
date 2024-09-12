@@ -51,6 +51,15 @@ with open(os.path.join(DATA_DIR, f"rg2_baseline_{mw}_new.pickle"), "rb") as hand
     rg2_mean_theo = pickle.load(handle)[:, 0]
     rg2_std_theo = pickle.load(handle)[:, 0]
 ```
+- **graph**: NetworkX graph representations of polymers. The node attribute "type" denotes the monomer type.
+- **label**: Architectural classes of polymers (e.g., linear, cyclic, star, branch, comb, dendrimer).
+- **desc**: Topological descriptors (optional).
+- **meta**: Identifiers for unique architectures (optional).
+- **mode**: Identifiers for unique chemical patterns (optional).
+- **rg2_mean**: Mean squared radii of gyration from simulations.
+- **rg2_std**: Corresponding standard deviation from simulations.
+- **rg2_mean_theo**: Mean squared radii of gyration from theoretical models.
+- **rg2_std_theo**: Corresponding standard deviation from theoretical models.
 
 ## File Structures
 
