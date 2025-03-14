@@ -19,7 +19,7 @@ class Args:
     def __init__(self):
         self.batch_size = 128
         self.lr = 0.001
-        self.epochs = 2000
+        self.epochs = 500
         self.patience = int(self.epochs / 1)
         self.dim = 128
         self.device = DEVICE
@@ -29,15 +29,17 @@ class Args:
         self.input_dim = 3
         self.output_dim = 1
         self.model_type = None
-        self.split_type = 0
-        self.pure_type = 0
+        self.split_type = 0 # 0, 1, 2, 3, 4, 5, 6, 7
+        self.pure_type = 0  # 0, 1, 2
         self.print_freq = 10
-        self.y_type = "mean"
+        self.y_type = "mean" # mean, std
+        self.readout='attn' # mean, max, attn
+        self.kernel='GIN' # GIN, GCN, GAT
         self.hyper_name = None
         self.if_log = 1
-        self.loss = "mae"
-        self.MODEL_PATH = "/scratch/gpfs/sj0161/delta_learning/model/"
-        self.HIST_PATH = "/scratch/gpfs/sj0161/delta_learning/history/"
+        self.loss = "mse"
+        self.MODEL_PATH = "/scratch/gpfs/sj0161/gcgnn/model/"
+        self.HIST_PATH = "/scratch/gpfs/sj0161/gcgnn/history/"
         self.DATA_DIR = "/scratch/gpfs/sj0161/delta_pattern/"
 
 
@@ -53,7 +55,7 @@ def process_data(args):
     args.val_loader = val_loader
     args.test_loader = test_loader
 
-    hyper_name = f"{args.model_type}_{args.split_type}_{args.pure_type}_{args.batch_size}_{args.lr}_{args.epochs}_{args.dim}_{args.y_type}_{args.loss}_{args.if_log}"
+    hyper_name = f"{args.model_type}_{args.split_type}_{args.pure_type}_{args.batch_size}_{args.lr}_{args.epochs}_{args.dim}_{args.y_type}_{args.loss}_{args.if_log}_{args.readout}_{args.kernel}"
     args.hyper_name = hyper_name
 
     hist_file = os.path.join(args.HIST_PATH, hyper_name + ".pickle")
@@ -69,7 +71,7 @@ def process_data(args):
 
 def get_hist_name(args):
     """Get the history file name"""
-    hyper_name = f"{args.model_type}_{args.split_type}_{args.pure_type}_{args.batch_size}_{args.lr}_{args.epochs}_{args.dim}_{args.y_type}_{args.loss}_{args.if_log}"
+    hyper_name = f"{args.model_type}_{args.split_type}_{args.pure_type}_{args.batch_size}_{args.lr}_{args.epochs}_{args.dim}_{args.y_type}_{args.loss}_{args.if_log}_{args.readout}_{args.kernel}"
     args.hyper_name = hyper_name
     hist_file = os.path.join(args.HIST_PATH, hyper_name + ".pickle")
 
@@ -127,17 +129,19 @@ def main(args):
 
 
 def job_array(idx, max_idx):
-    split_types = [0, 1, 2]
+    split_types = [0, 1, 2, 3, 4, 5, 6, 7]
     pure_types = [0, 1, 2]
     y_types = ["std", "mean"]
     model_types = ["GNN_Guided_Baseline_Simple", "GNN", "Baseline"]
-    losses = ["mse", "mae"]
+    losses = ["mse"]
     batch_sizes = [64, 128, 256, 512]
     dims = [32, 64, 128, 256]
     lrs = [0.001, 0.005, 0.0005]
-    if_logs = [0, 1]
+    if_logs = [1]
+    readouts = ["mean", "attn"]
+    kernels = ["GCN", "GAT"]
 
-    combs = itertools.product(
+    combs = list(itertools.product(
         model_types,
         split_types,
         pure_types,
@@ -147,10 +151,15 @@ def job_array(idx, max_idx):
         dims,
         lrs,
         if_logs,
-    )
-    combs = list(combs)
+        readouts,
+        kernels
+    ))
 
-    size = len(combs) // max_idx
+    
+    random.seed(SEED)
+    random.shuffle(combs)
+
+    size = (len(combs) + max_idx - 1) // max_idx  # Ensure all combinations are covered
     start = idx * size
     end = min((idx + 1) * size, len(combs))
 
@@ -164,7 +173,7 @@ if __name__ == "__main__":
     combs = job_array(idx, max_idx)
 
     for comb in combs:
-        model_type, split_type, pure_type, y_type, loss, batch_size, dim, lr, if_log = (
+        model_type, split_type, pure_type, y_type, loss, batch_size, dim, lr, if_log, readout, kernel = (
             comb
         )
 
@@ -179,5 +188,7 @@ if __name__ == "__main__":
         args.lr = lr
         args.epochs = 1000
         args.if_log = if_log
+        args.readout = readout
+        args.kernel = kernel
 
         main(args)

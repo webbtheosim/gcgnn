@@ -1,7 +1,6 @@
 import os
 from gcgnn.models.early_stopping import EarlyStopping
 from gcgnn.models.gnn_models import (
-    GNN_Guided_Baseline,
     GNN,
     Baseline,
     GNN_Guided_Baseline_Simple,
@@ -24,10 +23,10 @@ def train(args):
     early_stopping = EarlyStopping(patience=args.patience, verbose=True)
     hyper_name = args.hyper_name
     model_types = {
-        "GNN": GNN(args.input_dim, args.dim, args.output_dim),
-        "Baseline": Baseline(args.input_dim, args.dim, args.output_dim),
+        "GNN": GNN(args.input_dim, args.dim, args.output_dim, args.readout, args.kernel),
+        "Baseline": Baseline(args.input_dim, args.dim, args.output_dim, args.readout, args.kernel),
         "GNN_Guided_Baseline_Simple": GNN_Guided_Baseline_Simple(
-            args.input_dim, args.dim, args.output_dim
+            args.input_dim, args.dim, args.output_dim, args.readout, args.kernel
         ),
     }
 
@@ -172,13 +171,10 @@ def evaluate_model(args):
     print(hyper_name)
 
     model_types = {
-        "GNN_Guided_Baseline": GNN_Guided_Baseline(
-            args.input_dim, args.dim, args.output_dim
-        ),
-        "GNN": GNN(args.input_dim, args.dim, args.output_dim),
-        "Baseline": Baseline(args.input_dim, args.dim, args.output_dim),
+        "GNN": GNN(args.input_dim, args.dim, args.output_dim, args.readout, args.kernel),
+        "Baseline": Baseline(args.input_dim, args.dim, args.output_dim, args.readout, args.kernel),
         "GNN_Guided_Baseline_Simple": GNN_Guided_Baseline_Simple(
-            args.input_dim, args.dim, args.output_dim
+            args.input_dim, args.dim, args.output_dim, args.readout, args.kernel
         ),
     }
     model = model_types.get(args.model_type, None)
