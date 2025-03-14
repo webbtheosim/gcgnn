@@ -30,7 +30,7 @@ def hyper_select(
 
     file_pattern = os.path.join(
         TRAIN_RESULT_DIR,
-        f"{method}_{split_type}_{pattern}_*_*_*_*_{y_type}_mse*_{if_log}.pickle",
+        f"{method}_{split_type}_{pattern}_*_*_*_*_{y_type}_mse*_{if_log}_*_*.pickle",
     )
     files = glob.glob(file_pattern)
 
@@ -181,19 +181,28 @@ class Args:
         self.y_type = "mean"
         self.hyper_name = None
         self.if_log = 1
+        self.loss = "mse"
+        self.readout='attn' # mean, max, attn
+        self.kernel='GIN' # GIN, GCN, GAT
+        self.MODEL_PATH = "/scratch/gpfs/sj0161/gcgnn/model/"
+        self.HIST_PATH = "/scratch/gpfs/sj0161/gcgnn/history/"
+        self.DATA_DIR = "/scratch/gpfs/sj0161/delta_pattern/"
 
 
 def get_args(file):
     """Get the hyperparameters for the model"""
     args = Args()
-    args.split_type = int(file.split("_")[-9])
-    args.pure_type = int(file.split("_")[-8])
-    args.model_type = "_".join(file.split("_")[:-9])
-    args.y_type = file.split("_")[-3]
-    args.batch_size = int(file.split("_")[-7])
-    args.dim = int(file.split("_")[-4])
-    args.lr = float(file.split("_")[-6])
-    args.epochs = int(file.split("_")[-5])
-    args.if_log = int(file.split("_")[-1])
+    args.kernel= file.split("_")[-1]
+    args.readout=file.split("_")[-2]
+    args.if_log = int(file.split("_")[-3])
+    args.loss = file.split("_")[-4]
+    args.y_type = file.split("_")[-5]
+    args.dim = int(file.split("_")[-6])
+    args.epochs = int(file.split("_")[-7])
+    args.lr = float(file.split("_")[-8])
+    args.batch_size = int(file.split("_")[-9])
+    args.pure_type = int(file.split("_")[-10])
+    args.split_type = int(file.split("_")[-11])
+    args.model_type = "_".join(file.split("_")[:-11])
     args.hyper_name = file
     return args
