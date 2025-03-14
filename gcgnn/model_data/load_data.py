@@ -11,22 +11,23 @@ from sklearn.model_selection import train_test_split
 
 from gcgnn.model_data import str2num, preprocess_topo
 from gcgnn.model_data import load_graph_rg_data, shuffle_data
+from sklearn.model_selection import StratifiedKFold
 
 SEED = 42
 
-def create_data(args, graphs, beads, rg2_means, rg2_vars):
+def create_data(args, graphs, beads, rg2_means, rg2_stds):
     """ Create PyTorch Geometric data objects from the input data."""
     x_graphs     = []
     rg2_m_bases  = []
     rg2_s_bases  = []
     y_rg2_means  = []
-    y_rg2_vars   = []
+    y_rg2_stds   = []
 
-    for graph, bead, rg2_mean, rg2_var in zip(graphs, beads, rg2_means, rg2_vars):
+    for graph, bead, rg2_mean, rg2_std in zip(graphs, beads, rg2_means, rg2_stds):
         
         x_graphs.append(graph)
         y_rg2_means.append(rg2_mean)
-        y_rg2_vars.append(rg2_var)
+        y_rg2_stds.append(rg2_std)
         with open(os.path.join(args.DATA_DIR, f"rg2_baseline_{bead}_new.pickle"), "rb") as handle:
             m_base = pickle.load(handle)[:, 0]
             s_base = pickle.load(handle)[:, 0]
@@ -66,7 +67,7 @@ def create_data(args, graphs, beads, rg2_means, rg2_vars):
             
             x       = torch.tensor(node_features, dtype=torch.float)
             y_mean  = torch.tensor([[y_rg2_means[idx][i]]], dtype=torch.float)
-            y_std   = torch.tensor([[y_rg2_vars[idx][i]]], dtype=torch.float)
+            y_std   = torch.tensor([[y_rg2_stds[idx][i]]], dtype=torch.float)
             m_base  = torch.tensor([[rg2_m_bases[idx][i]]], dtype=torch.float)
             s_base  = torch.tensor([[rg2_s_bases[idx][i]]], dtype=torch.float)
             
@@ -93,26 +94,26 @@ def load_preprocess_data(args):
     graphs    = []
     topos     = []
     rg2_means = []
-    rg2_vars  = []
+    rg2_stds  = []
 
     beads  = [40, 90, 190]
 
     for bead in beads:
         file_dir = os.path.join(args.DATA_DIR, f"pattern_graph_data_{bead}_{bead+20}_rg_new.pickle")
 
-        graph, topo, rg2_mean, rg2_var = load_graph_rg_data(file_dir)
+        graph, topo, rg2_mean, rg2_std = load_graph_rg_data(file_dir)
 
         rg2_mean  = rg2_mean
-        rg2_var   = rg2_var ** 0.5
+        rg2_std   = rg2_std
 
         topo = preprocess_topo(topo)
 
         graphs.append(graph)
         topos.append(topo)
         rg2_means.append(rg2_mean)
-        rg2_vars.append(rg2_var)
+        rg2_stds.append(rg2_std)
 
-    data = create_data(args, graphs, beads, rg2_means, rg2_vars)
+    data = create_data(args, graphs, beads, rg2_means, rg2_stds)
 
     shuffle_data(data, topos)
 
@@ -141,7 +142,7 @@ def load_networkx_data(DATA_DIR="/scratch/gpfs/sj0161/delta_pattern/"):
             meta_data[start]  = pickle.load(handle)
             mode_data[start]  = pickle.load(handle)
             rg2_mean[start]   = pickle.load(handle)
-            rg2_std[start]    = pickle.load(handle) ** 0.5
+            rg2_std[start]    = pickle.load(handle)
 
         label_data[start] = np.array(label_data[start])
         label_data[start][label_data[start] == 'stara'] = 'star'
@@ -150,9 +151,11 @@ def load_networkx_data(DATA_DIR="/scratch/gpfs/sj0161/delta_pattern/"):
     return graph_data, label_data, desc_data, meta_data, mode_data, rg2_mean, rg2_std
 
 
-def load_data(args):
+def load_data(args, name="delta_data_v1222.pickle"):
     """ Load the input data for NN training and testing """
-    DATA_FILE  = os.path.join(args.DATA_DIR, "delta_data_v0314.pickle")
+    DATA_FILE  = os.path.join(args.DATA_DIR, name)
+    
+    print(DATA_FILE)
     
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "rb") as handle:
@@ -201,7 +204,29 @@ def load_data(args):
         topo_train_val = topo_40 + topo_190
         data_test  = data_90
         topo_test  = topo_90
+
+    elif args.split_type in [3, 4, 5, 6, 7]:
+        data_all = data_40 + data_90 + data_190
+        topo_all = topo_40 + topo_90 + topo_190
         
+        bead_labels = [0] * len(data_40) + [1] * len(data_90) + [2] * len(data_190)
+        patterns = [data_all[i].pattern.numpy() for i in range(len(data_all))]
+        patterns = np.array(patterns).squeeze()
+        topos = topo_all
+        topos = np.array(topos).squeeze()
+        combined_labels = [f"{pattern}_{topo}" for pattern, topo in zip(patterns, topos)]
+        
+        skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=SEED)
+        fold = args.split_type - 3
+        data_train_val, data_test, topo_train_val, topo_test = [], [], [], []
+
+        for i, (train_index, test_index) in enumerate(skf.split(data_all, combined_labels)):
+            if i == fold:
+                data_train_val = [data_all[j] for j in train_index]
+                data_test = [data_all[j] for j in test_index]
+                topo_train_val = [topo_all[j] for j in train_index]
+                topo_test = [topo_all[j] for j in test_index]
+                break
     
     if args.pure_type == 0:
         patterns = [data_train_val[i].pattern.numpy() for i in range(len(data_train_val))]
@@ -213,10 +238,10 @@ def load_data(args):
         combined_labels = [f"{pattern}_{topo}" for pattern, topo in zip(patterns, topos)]
         
         output = train_test_split(data_train_val, 
-                                topo_train_val, 
-                                test_size=0.2, 
-                                random_state=SEED,
-                                stratify=combined_labels)
+                                  topo_train_val, 
+                                  test_size=0.2, 
+                                  random_state=SEED,
+                                  stratify=combined_labels)
     
     elif args.pure_type == 1:
         data_train_val = data_40 + data_90 + data_190
@@ -224,14 +249,15 @@ def load_data(args):
         
         data_train = []
         topo_train = []
+        bead_labels_train = []
         data_rest  = []
         topo_rest  = []
+        bead_labels_rest = []
         
         for i, data_temp in enumerate(data_train_val):
             if data_temp['pattern'] == 0 or data_temp['pattern'] == 1:
                 data_train.append(data_temp)
                 topo_train.append(topo_train_val[i])
-                
             elif data_temp['pattern'] == 2:
                 data_rest.append(data_temp)
                 topo_rest.append(topo_train_val[i])
@@ -245,6 +271,7 @@ def load_data(args):
         topos = np.array(topos).squeeze()
         
         combined_labels = [f"{pattern}_{topo}" for pattern, topo in zip(patterns, topos)]
+        
             
         output = train_test_split(data_train, 
                                   topo_train, 
@@ -259,26 +286,32 @@ def load_data(args):
         if args.split_type == 0:
             data_train_val = data_40 + data_90
             topo_train_val = topo_40 + topo_90
+
         elif args.split_type == 1:
             data_train_val = data_90 + data_190
             topo_train_val = topo_90 + topo_190
+
         elif args.split_type == 2:
             data_train_val = data_40 + data_190
             topo_train_val = topo_40 + topo_190
+
         
         data_train = []
         topo_train = []
+        bead_labels_train = []
         data_rest  = []
         topo_rest  = []
+        bead_labels_rest = []
         
         for i, data_temp in enumerate(data_train_val):
             if data_temp['pattern'] == 0 or data_temp['pattern'] == 1:
                 data_train.append(data_temp)
                 topo_train.append(topo_train_val[i])
-                
+
             elif data_temp['pattern'] == 2:
                 data_rest.append(data_temp)
                 topo_rest.append(topo_train_val[i])
+
             else:
                 raise ValueError("Invalid pattern type value")
             
@@ -289,12 +322,14 @@ def load_data(args):
         topos = np.array(topos).squeeze()
         
         combined_labels = [f"{pattern}_{topo}" for pattern, topo in zip(patterns, topos)]
+        
             
         output = train_test_split(data_train, 
                                   topo_train, 
                                   test_size=0.2, 
                                   random_state=SEED,
                                   stratify=combined_labels)
+        
         if args.split_type == 0:
             data_test = data_rest + data_190
             topo_test = topo_rest + topo_190
