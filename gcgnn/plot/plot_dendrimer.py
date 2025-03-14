@@ -119,7 +119,9 @@ def plot_dendrimer(
 
     fig.savefig(out_file)
     print(["RMSE", "MAE", "R2", "R", "MAPE"])
-    print(np.round(yy[:, 3], 4))
+    # print(yy.shape)
+    yy[3, 2] = yy[3, 2] * bar_ratio
+    print(np.round(yy[3, :], 4))
 
     # second figure
     u = "dendrimer"
